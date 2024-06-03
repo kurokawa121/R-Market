@@ -1,0 +1,363 @@
+---
+title: "Market App and Code"
+output: html_document
+date: "2024-06-03"
+---
+
+Libraries
+
+```{r}
+library(tidyverse)
+library(shinydashboard)
+library(shiny)
+library(DT)
+
+```
+
+Adjustments to data set
+```{r}
+
+theme_set(theme_bw())
+
+# Removing Date column
+txhousing_simple <- txhousing %>% 
+  select(-(date)) %>% 
+  na.omit()
+
+# Changing month column from numbers to actual month names 
+txhousing_simple$month <- month.name[txhousing_simple$month]
+tibble(txhousing_simple)
+
+
+# for additional tab section
+txhousing_info <- txhousing %>% 
+  select(-(c(year,month,date)))
+
+txhousing_info
+
+```
+
+
+Median sale price per month in city
+```{r}
+
+txhousing_simple %>% 
+  filter(city %in% c("Abilene")) %>% 
+  ggplot(aes(fct_reorder(month, median), median)) + geom_boxplot(aes(fill = month), show.legend = FALSE) + 
+  coord_flip() +
+  facet_wrap(~city) +
+  labs(title = "Median Sale Prices per Month",
+       y = "Median Sale Price",
+       x = "")
+
+# Table to display median for each month
+txhousing_simple %>% 
+  filter(city %in% "Abilene") %>% 
+  group_by(month) %>% 
+  summarise(Median = median(sales))
+
+```
+
+
+Summary statistics based off city
+```{r}
+txhousing_simple %>% 
+  group_by(city) %>% 
+  na.omit() %>% 
+  summarize(Mean_Sales = mean(sales),
+            Mean_Volume = mean(volume),
+            Median = median(median),
+            Mean_Inventory = mean(inventory))
+  
+```
+
+
+Barplot of proportional of total listings vs total sales per year for particular city
+```{r}
+txhousing_simple %>%
+  filter(city == "Abilene") %>%
+  group_by(year) %>% 
+  na.omit() %>% 
+  summarise(total_listings = sum(listings),
+            total_sales = sum(sales)) %>% 
+  ggplot(aes(year)) + 
+  geom_bar(aes(y = total_listings, fill = "Total Listings"), stat = "identity", alpha = 0.9) +
+  geom_bar(aes(y = total_sales, fill = "Total Sales"), stat = "identity", alpha = 0.9) +
+  scale_fill_manual(values = c("Total Listings" = "orange","Total Sales" = "blue"), name = "Category") +
+  labs(title = "Comparison of Total Listings and Sales by Year",
+       x = "Year",
+       y = "") 
+
+# Table that contains the numbers
+txhousing_simple %>%
+  filter(city == "Abilene") %>%
+  group_by(year) %>% 
+  na.omit() %>% 
+  summarise(total_listings = sum(listings),
+            total_sales = sum(sales))
+
+
+```
+
+
+Histogram Distribution for certain columns
+```{r}
+txhousing_histo <- txhousing_simple %>% 
+  select(sales,volume, median, listings, inventory)
+
+txhousing_histo %>% 
+  na.omit() %>% 
+  ggplot() + geom_histogram(aes(sales))
+```
+
+
+Table for Max, Min, etc.. for certain columns
+```{r}
+
+# Set up for table
+
+city_a <- "Abilene"
+variable <- "sales"
+
+txhousing_simple %>% 
+  filter(city == city_a) %>% 
+  na.omit() %>% 
+  summarise(City = city_a,
+            Max = max(!!sym(variable)),
+            Min = min(!!sym(variable)),
+            Mean = mean(!!sym(variable)),
+            Median = median(!!sym(variable)))
+```
+
+
+
+Shiny App
+```{r}
+
+#Shiny App
+ui <- dashboardPage(
+  dashboardHeader(title = "Texas Market Data"),
+  
+  # ---------------------------- SideBar Section -----------------------------------
+  dashboardSidebar(
+    
+    # First menu tab
+    menuItem("Descriptive Statistics", tabName = "data",
+            menuSubItem("Data", tabName = "data"),
+            menuSubItem("Additional Information", tabName = "info")),
+    
+    # Second menu tab
+    menuItem("Inferential Statistics", tabName = "analysis",
+             menuSubItem("Linear Model", tabName = "linear")),
+    
+    # Third menu tab
+    menuItem("Visualizations", tabName = "visuals",
+             menuSubItem("Boxplot Visual", tabName = "visuals_1"),
+             menuSubItem("Barplot Visual", tabName = "visuals_2"),
+             menuSubItem("Histograms", tabName = "visuals_3"))
+    
+    
+  ),
+  
+  # ---------------------------------- Body ---------------------------------
+  dashboardBody(
+    tabItems(
+      
+  # ----------------------------- For Descriptive tab ------------------------
+      
+    # First tab content for descriptive menu tab (data tab)
+      tabItem(tabName = "data",
+              fluidPage(
+                selectInput("selection_data", "Select City", choices = unique(txhousing_info$city)),
+                box(title = "Summary Statistics", tableOutput("summary"), width = "100%"),
+                box(title = "Data", dataTableOutput("tx"), width = "100%")
+              )),
+  
+    # Second tab content for descriptive menu tab (Additonal information tab)
+      tabItem(tabName = "info",
+              fluidPage(
+                fluidRow(
+                  column(6,
+                         selectInput("selection_data_2", "Select City", choices = unique(txhousing$city))),
+                  column(6,
+                         selectInput("selection_choice", "Select Variable", choices = colnames(txhousing_simple)[c(4,5,7,8)]))),
+      
+                fluidRow(
+                  box(title = "Summary Table", tableOutput("information_table"), width = "100%")
+                  
+              ))),
+                
+    
+  # -------------------------------- For Visuals Tab --------------------------
+    
+    # first tab content for visuals menu tab
+      tabItem(tabName = "visuals_1",
+              fluidPage(
+                selectInput("selection_visuals_1", "Select City", choices = unique(txhousing$city)),
+                box(title = "Median Table", dataTableOutput("summary_median"), width = "100%"),
+                box(title = "Boxplot Visualization", plotOutput("boxplots"), width = "100%")
+                
+          )),
+    
+    # second tab content for visuals menu tab
+      tabItem(tabName = "visuals_2",
+            fluidPage(
+              selectInput("selection_visuals_2", "Select City", choices = unique(txhousing$city)),
+              box(title = "Total Listings and Total Sales", dataTableOutput("summary_2"), width = "100%"),
+              box(title = "Barplot Visualization", plotOutput("barplots"), width = "100%")
+          )),
+  
+  
+  # Third tab content for visuals menu tab
+    tabItem(tabName = "visuals_3",
+            fluidPage(
+              selectInput("selection_visuals_3", "Select Variable", choices = names(txhousing_histo)),
+              box(title = "Histogram Distribution", plotOutput("histogram"), width = "100%")
+              
+            ))
+  
+  
+      ))
+   )
+ 
+server <- function(input,output){
+  
+  #------------------------------ Section for filtered data ----------------------
+  
+  # If the user selects a non null value, the original data will equal to a filtered data set that will only display information regarding the chosen city
+  
+  filtered_data <- reactive({
+    
+    if(!is.null(input$selection_data)){
+      txhousing[txhousing$city == input$selection_data,]
+      
+  # if first statement fails, it will simply return original data set   
+    } else {
+     
+      txhousing
+      
+    }
+  })
+  
+  # --------------------- Render filter data set based off selection -------------------
+  
+  output$tx <- renderDataTable({
+    
+    filtered_data()
+ 
+  })
+  
+  # ------------------------ Summary Statistics Box ----------------------------
+  
+  output$summary <- renderTable({
+    
+  txhousing_simple %>% 
+    filter(city %in% input$selection_data) %>% 
+    na.omit() %>% 
+        summarize(Mean_Sales = signif(mean(sales), digits = 5),
+                  Mean_Volume = signif(mean(volume), digits = 5),
+                  Median = signif(median(median), digits = 5),
+                  Mean_Inventory = signif(mean(inventory), digits = 5))
+  
+  })
+  
+  # ------------------------- Boxplot Visualizations and Summary ------------------------
+  output$boxplots <- renderPlot({
+    
+  filtered <- filtered_data()
+  
+  # A boxplot of median sale price of different months will be shown based on city
+  txhousing_simple %>% 
+  filter(city %in% input$selection_visuals_1) %>% 
+  ggplot(aes(fct_reorder(month, median), median)) + geom_boxplot(aes(fill = month), show.legend = FALSE) + 
+  coord_flip() +
+  facet_wrap(~city) +
+  labs(title = "Median Sale Prices per Month",
+       y = "Median Sale Price",
+       x = "")
+  })
+  
+  output$summary_median <- renderDataTable({
+    
+  txhousing_simple %>% 
+  filter(city %in% input$selection_visuals_1) %>% 
+  group_by(month) %>% 
+  summarise(Median = median(sales))
+    
+    
+  })
+  
+  
+  # ---------------------------- Barplot Visualizations ----------------------
+  
+  output$barplots <- renderPlot({
+    
+  txhousing_simple %>%
+  filter(city %in% input$selection_visuals_2) %>%
+  group_by(year) %>% 
+  na.omit() %>% 
+  summarise(total_listings = sum(listings),
+            total_sales = sum(sales)) %>% 
+  ggplot(aes(year)) + 
+  geom_bar(aes(y = total_listings, fill = "Total Listings"), stat = "identity", alpha = 0.8) +
+  geom_bar(aes(y = total_sales, fill = "Total Sales"), stat = "identity", alpha = 0.8) +
+  scale_fill_manual(values = c("Total Listings" = "orange","Total Sales" = "blue"), name = "Category") +
+  labs(title = "Comparison of Total Listings and Sales by Year",
+       x = "Year",
+       y = "") 
+  
+  })
+  
+  # Displays the summary stats for the visuals  
+  
+  output$summary_2 <- renderDataTable({
+    
+  txhousing_simple %>%
+  filter(city %in% input$selection_visuals_2) %>%
+  group_by(year) %>% 
+  na.omit() %>% 
+  summarise(total_listings = sum(listings),
+            total_sales = sum(sales))
+
+  })
+  
+# ------------------------- Histogram Distribution Visuals -----------------------
+  
+   
+  output$histogram <- renderPlot({
+    
+  options(scipen = 999)
+    
+  txhousing_histo %>% 
+        na.omit() %>% 
+        ggplot() + geom_histogram(aes_string(input$selection_visuals_3))
+    
+  })
+  
+  
+# ----------------------------- table info section ---------------------------
+  
+  output$information_table <- renderTable({
+  
+  # Assign the column name to variable
+  variable <- input$selection_choice  
+    
+  # Returns a summary table based on a city chosen and column chosen
+  txhousing_simple %>% 
+  filter(city %in% input$selection_data_2) %>% 
+  na.omit() %>% 
+  summarise(City = input$selection_data_2,
+            Variable = input$selection_choice,
+            Max = max(!!sym(variable)),
+            Min = min(!!sym(variable)),
+            Mean = mean(!!sym(variable)),
+            Median = median(!!sym(variable)))
+  })
+  
+}
+
+# Run app
+shinyApp(ui,server)
+```
+
+
