@@ -6,6 +6,10 @@ This repository hosts a comprehensive Shiny application designed for analyzing m
 
 The code provided in this repository encompasses the development of a Shiny application for market analysis. Before diving into the intricacies of the Shiny app, the code includes data preprocessing steps, ensuring that the dataset is appropriately formatted for analysis. These steps involve adjusting the dataset by removing unnecessary columns, transforming numeric month values into their respective month names, and extracting additional tab section data.
 
+## Files
+
+The **Market_R** file hosts the Shiny app's code. For quick access, jump to **line 137**. Prior to the Shiny app, the code evaluates each component of the application separately to ensure functionality aligns with user input.
+
 ## Shiny App Features
 
 The core of this project is the Shiny application, which offers a user-friendly interface for interactive exploration of market data. The application is divided into several tabs, each focusing on specific functionalities:
