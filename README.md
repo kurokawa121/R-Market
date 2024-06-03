@@ -2,6 +2,9 @@
 
 This repository hosts a comprehensive Shiny application designed for analyzing market data from Texas. The application is tailored to provide in-depth insights into various aspects of the housing market trends, enabling users to explore and visualize data effortlessly.
 
+![City.gif](City.gif)
+
+
 ## Summary
 
 The code provided in this repository encompasses the development of a Shiny application for market analysis. Before diving into the intricacies of the Shiny app, the code includes data preprocessing steps, ensuring that the dataset is appropriately formatted for analysis. These steps involve adjusting the dataset by removing unnecessary columns, transforming numeric month values into their respective month names, and extracting additional tab section data.
